@@ -1,0 +1,28 @@
+{
+  "name": "social-media-platform",
+  "version": "1.0.0",
+  "description": "A complete social media platform built with React, Node.js, Express, and MongoDB",
+  "main": "index.js",
+  "scripts": {
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "server": "cd backend && npm run dev",
+    "client": "cd frontend && npm start",
+    "install-deps": "npm install && cd backend && npm install && cd ../frontend && npm install",
+    "build": "cd frontend && npm run build",
+    "start": "cd backend && npm start"
+  },
+  "keywords": [
+    "social-media",
+    "react",
+    "nodejs",
+    "express",
+    "mongodb",
+    "socket.io",
+    "jwt"
+  ],
+  "author": "CodeAlpha Intern",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
