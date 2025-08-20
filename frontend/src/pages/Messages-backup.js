@@ -120,10 +120,9 @@ const Messages = () => {
     e.preventDefault();
     if (!newMessage.trim() || !activeConversation || sendingMessage) return;
 
-    const messageContent = newMessage.trim();
-    
     try {
       setSendingMessage(true);
+      const messageContent = newMessage.trim();
       setNewMessage('');
 
       const response = await messagesAPI.sendMessage({
