@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { messagesAPI } from '../services/api';
+import { messagesAPI, usersAPI } from '../services/api';
 import { PageLoader, InlineLoader } from '../components/common/LoadingSpinner';
 import Avatar from '../components/common/Avatar';
 import toast from 'react-hot-toast';
@@ -20,6 +20,8 @@ const Messages = () => {
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [sendingMessage, setSendingMessage] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
   const [error, setError] = useState(null);
 
   // Cleanup and abort controllers
@@ -105,12 +107,13 @@ const Messages = () => {
     };
   }, [fetchConversations]);
 
-  // Handle userId parameter after conversations are loaded
+  // Handle userId parameter - try to open conversation when userId is provided
   useEffect(() => {
-    if (userId && conversations.length > 0) {
+    if (userId && !loading) {
+      // Try to open conversation regardless of existing conversations count
       openConversation(userId);
     }
-  }, [userId, conversations, openConversation]);
+  }, [userId, loading, openConversation]);
 
   useEffect(() => {
     scrollToBottom();
@@ -157,6 +160,41 @@ const Messages = () => {
       setSendingMessage(false);
     }
   };
+
+  const searchUsers = useCallback(async (query) => {
+    if (!query.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    try {
+      setIsSearching(true);
+      const response = await usersAPI.searchUsers({ q: query });
+      const users = response.data?.users || response.users || [];
+      setSearchResults(Array.isArray(users) ? users : []);
+    } catch (error) {
+      console.error('Error searching users:', error);
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  }, []);
+
+  const handleSearchChange = (e) => {
+    const query = e.target.value;
+    setSearchQuery(query);
+    
+    // Debounce search
+    if (searchTimeout.current) {
+      clearTimeout(searchTimeout.current);
+    }
+    
+    searchTimeout.current = setTimeout(() => {
+      searchUsers(query);
+    }, 300);
+  };
+
+  const searchTimeout = useRef(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -209,19 +247,59 @@ const Messages = () => {
               <div className="mt-3">
                 <input
                   type="text"
-                  placeholder="Search conversations..."
+                  placeholder="Search users or conversations..."
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={handleSearchChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
               </div>
             </div>
 
-            {/* Conversations List */}
+            {/* Search Results or Conversations List */}
             <div className="flex-1 overflow-y-auto">
-              {conversations.length === 0 ? (
+              {searchQuery.trim() ? (
+                // Show search results when searching
+                <div>
+                  {isSearching ? (
+                    <div className="p-4 text-center">
+                      <InlineLoader />
+                      <p className="text-gray-500 mt-2">Searching users...</p>
+                    </div>
+                  ) : searchResults.length > 0 ? (
+                    <div>
+                      <div className="p-3 bg-gray-50 text-sm font-medium text-gray-700">
+                        Users
+                      </div>
+                      {searchResults.map((user) => (
+                        <div
+                          key={user._id}
+                          onClick={() => {
+                            openConversation(user._id);
+                            setSearchQuery('');
+                            setSearchResults([]);
+                          }}
+                          className="p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 flex items-center"
+                        >
+                          <Avatar user={user} size="md" />
+                          <div className="ml-3">
+                            <p className="font-medium text-gray-900">
+                              {user.firstName} {user.lastName}
+                            </p>
+                            <p className="text-sm text-gray-500">@{user.username}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-4 text-center text-gray-500">
+                      No users found
+                    </div>
+                  )}
+                </div>
+              ) : conversations.length === 0 ? (
                 <div className="p-4 text-center text-gray-500">
-                  No conversations yet
+                  <p className="mb-2">No conversations yet</p>
+                  <p className="text-sm">Search for users above to start a conversation</p>
                 </div>
               ) : (
                 conversations.map((conversation) => {
