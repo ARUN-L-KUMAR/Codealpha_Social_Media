@@ -3,7 +3,7 @@ import axios from 'axios';
 // Create axios instance
 const API = axios.create({
   baseURL: process.env.REACT_APP_API_URL || 'http://localhost:5000/api',
-  timeout: 10000,
+  timeout: 30000, // Increased timeout to 30 seconds
 });
 
 // Request interceptor to add auth token
@@ -45,7 +45,15 @@ export const authAPI = {
 export const usersAPI = {
   getUsers: (params) => API.get('/users', { params }),
   getUser: (id) => API.get(`/users/${id}`),
-  getProfile: (username) => API.get(`/users/profile/${username}`),
+  getProfile: (identifier) => {
+    // Check if identifier is a valid ObjectId (24 characters, hex)
+    const isObjectId = /^[0-9a-fA-F]{24}$/.test(identifier);
+    if (isObjectId) {
+      return API.get(`/users/${identifier}`);
+    } else {
+      return API.get(`/users/profile/${identifier}`);
+    }
+  },
   updateProfile: (userData) => API.put('/users/profile', userData),
   uploadProfilePicture: (formData) => API.post('/users/upload/profile', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }

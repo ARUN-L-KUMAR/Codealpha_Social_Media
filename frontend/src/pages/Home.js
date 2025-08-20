@@ -96,7 +96,7 @@ const Home = () => {
   };
 
   const handlePostDeleted = (postId) => {
-    setPosts(prev => prev.filter(post => post._id !== postId));
+    setPosts(prev => Array.isArray(prev) ? prev.filter(post => post._id !== postId) : []);
   };
 
   const handleRefresh = () => {
@@ -215,7 +215,7 @@ const Home = () => {
                   </div>
                 }
               >
-                {posts.map((post) => (
+                {Array.isArray(posts) && posts.map((post) => (
                   <PostCard
                     key={post._id}
                     post={post}
@@ -272,7 +272,7 @@ const Home = () => {
                   </div>
                 ) : suggestedUsers.length > 0 ? (
                   <div className="space-y-4">
-                    {suggestedUsers.map((suggestedUser) => (
+                    {Array.isArray(suggestedUsers) && suggestedUsers.map((suggestedUser) => (
                       <UserCard
                         key={suggestedUser._id}
                         user={suggestedUser}

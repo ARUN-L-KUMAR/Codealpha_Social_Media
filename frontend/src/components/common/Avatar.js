@@ -88,7 +88,8 @@ const Avatar = ({
     setImageLoading(false);
   };
 
-  const handleImageError = () => {
+  const handleImageError = (e) => {
+    console.warn('Avatar image failed to load:', profilePictureUrl, e);
     setImageError(true);
     setImageLoading(false);
   };
@@ -144,6 +145,8 @@ const Avatar = ({
             }`}
             onLoad={handleImageLoad}
             onError={handleImageError}
+            crossOrigin="anonymous"
+            loading="lazy"
           />
         </>
       ) : (

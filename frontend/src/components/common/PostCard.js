@@ -173,17 +173,26 @@ const PostCard = ({ post, onUpdate, onDelete }) => {
       </div>
 
       {/* Post Images */}
-      {post.images && post.images.length > 0 && (
+      {post.images && Array.isArray(post.images) && post.images.length > 0 && (
         <div className={`mb-4 ${post.images.length === 1 ? '' : 'grid grid-cols-2 gap-2'}`}>
-          {post.images.map((image, index) => (
-            <div key={index} className="relative overflow-hidden rounded-lg">
-              <img
-                src={image}
-                alt={`Content ${index + 1}`}
-                className="w-full h-auto object-cover hover:scale-105 transition-transform duration-300"
-              />
-            </div>
-          ))}
+          {post.images.map((image, index) => {
+            // Ensure image is a valid string URL
+            const imageUrl = typeof image === 'string' ? image : (image?.url || '');
+            if (!imageUrl) return null;
+            
+            return (
+              <div key={index} className="relative overflow-hidden rounded-lg">
+                <img
+                  src={imageUrl}
+                  alt={`Content ${index + 1}`}
+                  className="w-full h-auto object-cover hover:scale-105 transition-transform duration-300"
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                  }}
+                />
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -264,7 +273,7 @@ const PostCard = ({ post, onUpdate, onDelete }) => {
 
           {/* Comments List */}
           <div className="space-y-4">
-            {comments.map((comment) => (
+            {Array.isArray(comments) && comments.map((comment) => (
               <div key={comment._id} className="flex space-x-3">
                 <Link to={`/profile/${comment.author?.username}`}>
                   <Avatar

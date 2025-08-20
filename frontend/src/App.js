@@ -67,6 +67,12 @@ function AppContent() {
             </ProtectedRoute>
           } />
           
+          <Route path="/profile" element={
+            <ProtectedRoute>
+              <Profile />
+            </ProtectedRoute>
+          } />
+          
           <Route path="/profile/edit" element={
             <ProtectedRoute>
               <EditProfile />
@@ -92,6 +98,12 @@ function AppContent() {
           } />
           
           <Route path="/messages" element={
+            <ProtectedRoute>
+              <Messages />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/messages/:userId" element={
             <ProtectedRoute>
               <Messages />
             </ProtectedRoute>
@@ -139,7 +151,12 @@ function AppContent() {
 
 function App() {
   return (
-    <Router>
+    <Router 
+      future={{
+        v7_startTransition: true,
+        v7_relativeSplatPath: true
+      }}
+    >
       <AuthProvider>
         <SocketProvider>
           <AppContent />

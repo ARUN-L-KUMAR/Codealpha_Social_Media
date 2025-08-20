@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { messagesAPI } from '../services/api';
 import { PageLoader, InlineLoader } from '../components/common/LoadingSpinner';
 import { getDefaultAvatar } from '../utils/helpers';
+import Avatar from '../components/common/Avatar';
 import toast from 'react-hot-toast';
 
 const Messages = () => {
@@ -17,76 +18,104 @@ const Messages = () => {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
+  const [messagesLoading, setMessagesLoading] = useState(false);
   const [sendingMessage, setSendingMessage] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [error, setError] = useState(null);
+
+  // Cleanup and abort controllers
+  const abortController = useRef(null);
 
   useEffect(() => {
     fetchConversations();
-    if (userId) {
+    
+    // Cleanup function
+    return () => {
+      if (abortController.current) {
+        abortController.current.abort();
+      }
+    };
+  }, []);
+
+  // Handle userId parameter after conversations are loaded
+  useEffect(() => {
+    if (userId && conversations.length > 0) {
       openConversation(userId);
     }
-  }, [userId]);
+  }, [userId, conversations, openConversation]);
 
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
 
-  const fetchConversations = async () => {
+  const fetchConversations = useCallback(async () => {
     try {
       setLoading(true);
+      setError(null);
+      
       const response = await messagesAPI.getConversations();
-      setConversations(response.data.conversations || []);
+      const conversationsData = response.data?.conversations || response.conversations || [];
+      setConversations(Array.isArray(conversationsData) ? conversationsData : []);
     } catch (error) {
       console.error('Error fetching conversations:', error);
-      toast.error('Failed to load conversations');
+      setError('Failed to load conversations');
+      if (error.code !== 'ERR_CANCELED') {
+        toast.error('Failed to load conversations');
+      }
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const openConversation = async (userId) => {
+  const openConversation = useCallback(async (targetUserId) => {
     try {
-      // Find or create conversation
+      setMessagesLoading(true);
+      setError(null);
+      
+      // Find existing conversation
       let conversation = conversations.find(conv => 
-        conv.participants.some(p => p._id === userId)
+        conv.participants.some(p => p._id === targetUserId || p.id === targetUserId)
       );
 
       if (!conversation) {
-        // Create new conversation - replace with actual API call
-        conversation = {
-          _id: `new_${userId}`,
-          participants: [
-            currentUser,
-            {
-              _id: userId,
-              fullName: 'New User',
-              username: 'newuser',
-              profilePicture: '/api/placeholder/40/40',
-              isOnline: false
-            }
-          ],
-          lastMessage: null,
-          unreadCount: 0
-        };
+        // Create new conversation via API
+        try {
+          const response = await messagesAPI.createOrGetConversation(targetUserId);
+          conversation = response.data?.conversation || response.conversation;
+        } catch (error) {
+          console.error('Error creating conversation:', error);
+          toast.error('Failed to start conversation');
+          return;
+        }
       }
 
       setActiveConversation(conversation);
-      fetchMessages(conversation._id);
+      await fetchMessages(conversation._id);
     } catch (error) {
       console.error('Error opening conversation:', error);
-      toast.error('Failed to open conversation');
+      if (error.code !== 'ERR_CANCELED') {
+        toast.error('Failed to open conversation');
+      }
+    } finally {
+      setMessagesLoading(false);
     }
-  };
+  }, [conversations]);
 
-  const fetchMessages = async (conversationId) => {
+  const fetchMessages = useCallback(async (conversationId) => {
     try {
+      setMessagesLoading(true);
       const response = await messagesAPI.getMessages(conversationId);
-      setMessages(response.data.messages || []);
+      const messagesData = response.data?.messages || response.messages || [];
+      setMessages(Array.isArray(messagesData) ? messagesData : []);
     } catch (error) {
       console.error('Error fetching messages:', error);
-      toast.error('Failed to load messages');
+      if (error.code !== 'ERR_CANCELED') {
+        toast.error('Failed to load messages');
+      }
+    } finally {
+      setMessagesLoading(false);
     }
-  };
+  }, []);
 
   const sendMessage = async (e) => {
     e.preventDefault();
@@ -94,7 +123,7 @@ const Messages = () => {
 
     try {
       setSendingMessage(true);
-      const messageContent = newMessage;
+      const messageContent = newMessage.trim();
       setNewMessage('');
 
       const response = await messagesAPI.sendMessage({
@@ -103,21 +132,27 @@ const Messages = () => {
         messageType: 'text'
       });
 
-      const newMsg = response.data.message;
-      setMessages(prev => [...prev, newMsg]);
+      const newMsg = response.data?.message || response.message;
+      if (newMsg) {
+        setMessages(prev => [...prev, newMsg]);
 
-      // Update conversation's last message
-      setConversations(prev =>
-        prev.map(conv =>
-          conv._id === activeConversation._id
-            ? { ...conv, lastMessage: newMsg }
-            : conv
-        )
-      );
+        // Update conversation's last message
+        setConversations(prev =>
+          prev.map(conv =>
+            conv._id === activeConversation._id
+              ? { ...conv, lastMessage: newMsg, updatedAt: new Date() }
+              : conv
+          )
+        );
+      }
       
     } catch (error) {
       console.error('Error sending message:', error);
-      toast.error('Failed to send message');
+      // Restore the message if sending failed
+      setNewMessage(messageContent);
+      if (error.code !== 'ERR_CANCELED') {
+        toast.error('Failed to send message');
+      }
     } finally {
       setSendingMessage(false);
     }
@@ -153,14 +188,23 @@ const Messages = () => {
   };
 
   const getOtherParticipant = (conversation) => {
-    return conversation.participants.find(p => p._id !== currentUser?.id);
+    if (!conversation?.participants || !Array.isArray(conversation.participants)) {
+      return { _id: '', fullName: 'Unknown User', username: 'unknown', profilePicture: '' };
+    }
+    return conversation.participants.find(p => p._id !== currentUser?.id) || 
+           { _id: '', fullName: 'Unknown User', username: 'unknown', profilePicture: '' };
   };
 
-  const filteredConversations = conversations.filter(conv => {
+  const filteredConversations = Array.isArray(conversations) ? conversations.filter(conv => {
+    if (!conv || !searchQuery) return true;
+    
     const otherParticipant = getOtherParticipant(conv);
-    return otherParticipant.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-           otherParticipant.username.toLowerCase().includes(searchQuery.toLowerCase());
-  });
+    const fullName = otherParticipant?.fullName || '';
+    const username = otherParticipant?.username || '';
+    
+    return fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+           username.toLowerCase().includes(searchQuery.toLowerCase());
+  }) : [];
 
   if (loading) {
     return (
@@ -219,14 +263,11 @@ const Messages = () => {
                       >
                         <div className="flex items-center space-x-3">
                           <div className="relative flex-shrink-0">
-                            <img
-                              src={otherParticipant.profilePicture}
-                              alt={otherParticipant.fullName}
-                              className="w-12 h-12 rounded-full object-cover"
+                            <Avatar 
+                              user={otherParticipant} 
+                              size="md"
+                              showOnlineStatus={true}
                             />
-                            {otherParticipant.isOnline && (
-                              <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white dark:border-gray-800 rounded-full"></div>
-                            )}
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between">
@@ -257,6 +298,22 @@ const Messages = () => {
                       </div>
                     );
                   })
+                ) : error ? (
+                  <div className="p-8 text-center">
+                    <div className="w-16 h-16 mx-auto mb-4 text-red-300 dark:text-red-600">
+                      <svg fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-1">Error loading conversations</h3>
+                    <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">{error}</p>
+                    <button
+                      onClick={fetchConversations}
+                      className="px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+                    >
+                      Retry
+                    </button>
+                  </div>
                 ) : (
                   <div className="p-8 text-center">
                     <div className="w-16 h-16 mx-auto mb-4 text-gray-300 dark:text-gray-600">

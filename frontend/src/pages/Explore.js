@@ -160,7 +160,7 @@ const Explore = () => {
                 </h3>
               </div>
               <div className="p-3 space-y-2">
-                {searchResults.map(user => (
+                {Array.isArray(searchResults) && searchResults.map(user => (
                   <div key={user._id} className="hover:bg-gray-50/50 dark:hover:bg-gray-700/30 rounded-xl transition-colors duration-200">
                     <UserCard user={user} size="small" />
                   </div>
@@ -216,7 +216,7 @@ const Explore = () => {
                 </div>
               ) : posts.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {posts.map((post, index) => (
+                  {Array.isArray(posts) && posts.map((post, index) => (
                     <div 
                       key={post._id}
                       style={{ 
@@ -264,7 +264,7 @@ const Explore = () => {
             <div>
               {users.length > 0 ? (
                 <div className="grid grid-cols-4 gap-6 w-full">
-                  {users.map((user, index) => (
+                  {Array.isArray(users) && users.map((user, index) => (
                     <div 
                       key={user._id} 
                       className="w-full transform hover:scale-[1.02] transition-all duration-300"
@@ -311,7 +311,7 @@ const Explore = () => {
           {activeTab === 'trending' && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {trending.length > 0 ? (
-                trending.map((topic, index) => (
+                Array.isArray(trending) && trending.map((topic, index) => (
                   <div 
                     key={index} 
                     className="relative overflow-hidden rounded-2xl border border-gray-200/60 dark:border-gray-700/60 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm hover:bg-white/90 dark:hover:bg-gray-800/90 transition-all duration-300 hover:shadow-xl hover:shadow-red-500/10 dark:hover:shadow-red-400/10 hover:-translate-y-1 p-6 cursor-pointer group"

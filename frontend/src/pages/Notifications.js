@@ -80,11 +80,11 @@ const Notifications = () => {
     try {
       await notificationsAPI.markAsRead(notificationId);
       setNotifications(prev =>
-        prev.map(notif =>
+        Array.isArray(prev) ? prev.map(notif =>
           notif._id === notificationId
             ? { ...notif, isRead: true, readAt: new Date() }
             : notif
-        )
+        ) : []
       );
     } catch (error) {
       console.error('Error marking notification as read:', error);
@@ -96,7 +96,7 @@ const Notifications = () => {
     try {
       await notificationsAPI.markAllAsRead();
       setNotifications(prev =>
-        prev.map(notif => ({ ...notif, isRead: true, readAt: new Date() }))
+        Array.isArray(prev) ? prev.map(notif => ({ ...notif, isRead: true, readAt: new Date() })) : []
       );
       alert('All notifications marked as read');
     } catch (error) {
@@ -109,7 +109,7 @@ const Notifications = () => {
     event.stopPropagation(); // Prevent navigation when deleting
     try {
       await notificationsAPI.deleteNotification(notificationId);
-      setNotifications(prev => prev.filter(notif => notif._id !== notificationId));
+      setNotifications(prev => Array.isArray(prev) ? prev.filter(notif => notif._id !== notificationId) : []);
     } catch (error) {
       console.error('Error deleting notification:', error);
     }
@@ -255,13 +255,13 @@ const Notifications = () => {
     }
   };
 
-  const filteredNotifications = notifications.filter(notification => {
+  const filteredNotifications = Array.isArray(notifications) ? notifications.filter(notification => {
     if (filter === 'unread') return !notification.isRead;
     if (filter === 'read') return notification.isRead;
     return true;
-  });
+  }) : [];
 
-  const unreadCount = notifications.filter(notif => !notif.isRead).length;
+  const unreadCount = Array.isArray(notifications) ? notifications.filter(notif => !notif.isRead).length : 0;
 
   if (loading) {
     return (
