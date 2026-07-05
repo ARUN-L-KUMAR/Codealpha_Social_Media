@@ -1,8 +1,8 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
-const User = require('./models/User');
-const Post = require('./models/Post');
-const Follow = require('./models/Follow');
+const User = require('../backend/models/User');
+const Post = require('../backend/models/Post');
+const Follow = require('../backend/models/Follow');
 require('dotenv').config();
 
 const connectDB = async () => {

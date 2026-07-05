@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '..', 'backend', '.env') });
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGODB_URI, {
@@ -7,9 +8,9 @@ mongoose.connect(process.env.MONGODB_URI, {
   useUnifiedTopology: true,
 });
 
-const User = require('./models/User');
-const Notification = require('./models/Notification');
-const Post = require('./models/Post');
+const User = require('../backend/models/User');
+const Notification = require('../backend/models/Notification');
+const Post = require('../backend/models/Post');
 
 async function createTestNotifications() {
   try {
