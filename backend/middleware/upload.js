@@ -2,14 +2,21 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
+// Check if running in Vercel Serverless environment
+const isVercel = process.env.VERCEL === '1' || process.env.VERCEL === 'true' || process.env.NODE_ENV === 'production';
+
 // Create uploads directory if it doesn't exist
-const uploadDir = path.join(__dirname, '../uploads');
+const uploadDir = isVercel ? '/tmp/uploads' : path.join(__dirname, '../uploads');
 const profileDir = path.join(uploadDir, 'profiles');
 const postDir = path.join(uploadDir, 'posts');
 
 [uploadDir, profileDir, postDir].forEach(dir => {
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
+  try {
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+  } catch (err) {
+    console.error(`Failed to create directory ${dir}:`, err.message);
   }
 });
 

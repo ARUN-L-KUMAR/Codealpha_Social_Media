@@ -89,14 +89,21 @@ app.use((req, res, next) => {
   next();
 });
 
+// Check if running in Vercel Serverless environment
+const isVercel = process.env.VERCEL === '1' || process.env.VERCEL === 'true' || process.env.NODE_ENV === 'production';
+
 // Create uploads directory if it doesn't exist
-const uploadsDir = path.join(__dirname, 'uploads');
+const uploadsDir = isVercel ? '/tmp/uploads' : path.join(__dirname, 'uploads');
 const profilesDir = path.join(uploadsDir, 'profiles');
 const postsDir = path.join(uploadsDir, 'posts');
 
 [uploadsDir, profilesDir, postsDir].forEach(dir => {
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
+  try {
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+  } catch (err) {
+    console.error(`Failed to create directory ${dir}:`, err.message);
   }
 });
 
