@@ -183,4 +183,6 @@ server.listen(PORT, () => {
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
 });
 
-module.exports = { app, io };
+module.exports = app;
+module.exports.app = app;
+module.exports.io = io;
