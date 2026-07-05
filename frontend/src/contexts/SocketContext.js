@@ -13,10 +13,14 @@ export const SocketProvider = ({ children }) => {
   useEffect(() => {
     if (user) {
       // Initialize socket connection
-      const newSocket = io(process.env.REACT_APP_SERVER_URL || 'http://localhost:5000', {
-        transports: ['websocket'],
-        upgrade: false
-      });
+      const newSocket = io(
+        process.env.REACT_APP_SERVER_URL || 
+        (process.env.NODE_ENV === 'production' ? 'https://codeaplha-sociamedia-bd.vercel.app' : 'http://localhost:5000'), 
+        {
+          transports: ['websocket'],
+          upgrade: false
+        }
+      );
 
       // Join user to their room
       newSocket.emit('join', user.id);

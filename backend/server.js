@@ -25,9 +25,31 @@ const app = express();
 const server = http.createServer(app);
 
 // Socket.io setup
+// CORS origin configuration
+const allowedOrigins = [
+  process.env.CLIENT_URL,
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
+  "https://codealpha-social-media.vercel.app",
+  "https://codeaplha-sociamedia-bd.vercel.app",
+].filter(Boolean);
+
+const checkOrigin = (origin, callback) => {
+  if (!origin) return callback(null, true);
+  if (
+    allowedOrigins.indexOf(origin) !== -1 ||
+    origin.endsWith('.vercel.app') ||
+    /https?:\/\/.*codealpha-social-media.*/.test(origin)
+  ) {
+    return callback(null, true);
+  }
+  callback(null, false);
+};
+
+// Socket.io setup
 const io = socketIo(server, {
   cors: {
-    origin: process.env.CLIENT_URL || "http://localhost:3000",
+    origin: checkOrigin,
     methods: ["GET", "POST"]
   }
 });
@@ -45,11 +67,7 @@ app.use(helmet({
 }));
 app.use(limiter);
 app.use(cors({
-  origin: [
-    process.env.CLIENT_URL || "http://localhost:3000",
-    "http://localhost:3000",
-    "http://127.0.0.1:3000"
-  ],
+  origin: checkOrigin,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
@@ -62,12 +80,12 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use((req, res, next) => {
   const start = Date.now();
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
-  
+
   res.on('finish', () => {
     const duration = Date.now() - start;
     console.log(`[${new Date().toISOString()}] ${req.method} ${req.path} - ${res.statusCode} (${duration}ms)`);
   });
-  
+
   next();
 });
 
@@ -136,7 +154,7 @@ app.use('/api/messages', messageRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
-  res.status(200).json({ 
+  res.status(200).json({
     message: 'Social Media Platform API is running!',
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development'
