@@ -19,7 +19,7 @@
   "scripts": {
     "start": "node ./node_modules/react-scripts/bin/react-scripts.js start",
     "dev": "node ./node_modules/react-scripts/bin/react-scripts.js start",
-    "build": "node -e \"process.env.CI='false'; process.argv[1]='react-scripts'; process.argv[2]='build'; require(require('path').resolve('./node_modules/react-scripts/bin/react-scripts.js'))\"",
+    "build": "node build.js",
     "test": "node ./node_modules/react-scripts/bin/react-scripts.js test",
     "eject": "node ./node_modules/react-scripts/bin/react-scripts.js eject"
   },
